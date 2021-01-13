@@ -1,0 +1,191 @@
+// the part the heroes wrote
+#include <ESP8266WiFi.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <TimeLib.h>
+#include <ArduinoJson.h>
+#include <LiquidCrystal_I2C.h>
+#include <Adafruit_SSD1306.h>
+#include <SPI.h>
+#include <Wire.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+
+#define OLED_RESET     0 // Reset pin # (or -1 if sharing Arduino reset pin)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// my weefee secret recipie
+const char* ssid     = "NETGEAR02";
+const char* password = "sunnystreet319";
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "time.nist.gov", -18000);
+
+//make the blinky lights know which order to put the magic beans
+char Time [ ] = "Time:00:00:00";
+char Date [ ] = "Date:00/00/2000";
+byte last_second, second_, minute_, hour_, day_, month_;
+int year_;
+
+
+// blinky lights number and it aint a square
+int lcdColumns = 16;
+int lcdRows = 2;
+LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);
+
+
+// this is magic sauce, no one knows how it works, just dont delete it
+const char* host = "api.coindesk.com";
+
+void setup()
+{
+  //turn on the blinky light word reading thing
+  lcd.init();
+  lcd.backlight();
+
+  Serial.begin(115200);
+  delay(10);
+
+
+  // this bit heres for WeeFee keenekshun
+  Serial.println();
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void loop() {
+//this part is just how we turn the magic beans into bliky lights
+  timeClient.update();
+  unsigned long unix_epoch = timeClient.getEpochTime();   
+  second_ = second(unix_epoch);
+
+  if (last_second != second_) {
+    minute_ = minute(unix_epoch);
+    hour_   = hour(unix_epoch);
+    day_    = day(unix_epoch);
+    month_  = month(unix_epoch);
+    year_   = year(unix_epoch);
+
+    Time[12] = second_ % 10 + 48;
+    Time[11] = second_ / 10 + 48;
+    Time[9]  = minute_ % 10 + 48;
+    Time[8]  = minute_ / 10 + 48;
+    Time[6]  = hour_   % 10 + 48;
+    Time[5]  = hour_   / 10 + 48;
+
+    Date[5]  = day_   / 10 + 48;
+    Date[6]  = day_   % 10 + 48;
+    Date[8]  = month_  / 10 + 48;
+    Date[9]  = month_  % 10 + 48;
+    Date[13] = (year_   / 10) % 10 + 48;
+    Date[14] = year_   % 10 % 10 + 48;
+
+
+    // some magic dust
+    Serial.print("connecting to ");
+    Serial.println(host);
+
+    // internet faucet
+    WiFiClient client;
+    const int httpPort = 80;
+    if (!client.connect(host, httpPort)) {
+      Serial.println("connection failed");
+      return;
+    }
+    // make magic recipie
+    String url = "/v1/bpi/currentprice.json";
+
+    Serial.print("Requesting URL: ");
+    Serial.println(url);
+
+    // ask wizard for magic beans
+    client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+                 "Host: " + host + "\r\n" +
+                 "Connection: close\r\n\r\n");
+    delay(50);
+
+    // magic beans
+    String answer;
+    while (client.available()) {
+      String line = client.readStringUntil('\r');
+      answer += line;
+    }
+
+    client.stop();
+    Serial.println();
+    Serial.println("closing connection");
+
+    // cooked beans
+    Serial.println();
+    Serial.println("Answer: ");
+    Serial.println(answer);
+
+    // arrays start at fucking zero, and this is where beans tossed into the sauce
+    String jsonAnswer;
+    int jsonIndex;
+
+    for (int i = 0; i < answer.length(); i++) {
+      if (answer[i] == '{') {
+        jsonIndex = i;
+        break;
+      }
+    }
+
+    // taste the sauce and beans
+    jsonAnswer = answer.substring(jsonIndex);
+    Serial.println();
+    Serial.println("JSON answer: ");
+    Serial.println(jsonAnswer);
+    jsonAnswer.trim();
+
+    // how do they taste??
+    int rateIndex = jsonAnswer.indexOf("rate_float");
+    String priceString = jsonAnswer.substring(rateIndex + 12, rateIndex + 18);
+    priceString.trim();
+    float price = priceString.toFloat();
+
+    // write how the beans taste on the blinky lights thingy 
+    Serial.println();
+    Serial.println("Bitcoin price: ");
+    Serial.println(price);
+    Serial.println(Time);
+    Serial.println(Date);
+
+    //more beans to display
+    lcd.setCursor (0, 0);
+    lcd.print ("Bitcoin");
+    if (priceString); {
+      lcd.setCursor (9, 0);
+      lcd.print (String (priceString));
+      delay(500);
+    }
+    //suck it, nerd
+    if (Date); {
+      lcd.setCursor (0, 1);
+      lcd.print ("                ");
+      lcd.setCursor (0, 1);
+      lcd.print (Date);
+      delay (10000);}
+     if (Time);{
+      lcd.setCursor (0, 1);
+      lcd.print ("                ");
+      lcd.setCursor (0, 1);
+       lcd.print(Time);
+       delay(10000);
+    }
+  
+  }
+}
