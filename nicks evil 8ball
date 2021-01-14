@@ -1,0 +1,24 @@
+prank device 
+
+features
+  wifi deautheticator
+  ssh
+  oled
+  buttons
+  gyroscope
+  games
+  menu
+  UI
+  rugged hardware design
+
+description of use
+
+  user is told on screen not to use the button, but it is attractive and inevitably gets pushed. the wifi turns off (deauthenticates) for 10 minutes. 
+  on screen prompts scold presser, tells them the wifi can be erstored early if they beat a mini game of snake or 100 button presses or whatever.
+  if they fail, which they likely will (game not entirely impossible), then they will be subjected to 2 days of quiet chirping (akin to smoke alarm)
+  game 3 can disable all penalties or make the deauthnticator run for 20 more minutes.
+  IF presser declines to play, device will "whistle" while it waits and play birthday card music until second game is played, even after initial wifi 
+  deauthentication 
+  
+back end features
+  ssh or serial comands should enable reset to "rest" state.
